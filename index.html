@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Dial de Decisões</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg: #0a0a0a;
+        --panel: #0e0e0e;
+        --panel-border: #222;
+        --text: #8c8c8c;
+        --muted: #5c5c5c;
+        --accent: #c8b89a;
+        --accent-soft: #c8b89a33;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        min-height: 100%;
+        background: var(--bg);
+      }
+
+      body {
+        font-family: "Barlow Condensed", sans-serif;
+        color: var(--text);
+      }
+
+      .safe-root {
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 32px 16px 24px;
+        user-select: none;
+        -webkit-user-select: none;
+        overflow: hidden;
+      }
+
+      #dial-canvas {
+        display: block;
+        width: 280px;
+        height: 280px;
+        touch-action: none;
+      }
+
+      .pos-display {
+        margin-top: 14px;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        color: #585858;
+      }
+
+      .tooth-big {
+        margin-top: 5px;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 42px;
+        line-height: 1;
+        color: var(--accent);
+        letter-spacing: 0.08em;
+      }
+
+      .controls {
+        margin-top: 18px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .btn {
+        background: #111;
+        border: 0.5px solid #333;
+        color: #aaa;
+        font-family: "Barlow Condensed", sans-serif;
+        font-size: 13px;
+        font-weight: 400;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 8px 18px;
+        border-radius: 3px;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+      }
+
+      .btn:active {
+        background: #1e1e1e;
+        color: var(--accent);
+        border-color: #555;
+      }
+
+      .btn-rand {
+        background: transparent;
+        border-color: #c8b89a44;
+        color: #c8b89a88;
+        font-size: 11px;
+      }
+
+      .message-box {
+        width: 100%;
+        max-width: 300px;
+        min-height: 56px;
+        margin-top: 18px;
+        background: var(--panel);
+        border: 0.5px solid var(--panel-border);
+        border-radius: 4px;
+        padding: 12px 16px;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 300;
+        color: #666;
+        letter-spacing: 0.03em;
+        line-height: 1.5;
+        transition: color 0.3s ease, border-color 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .message-box.active {
+        color: var(--accent);
+        border-color: var(--accent-soft);
+      }
+
+      .hint {
+        margin-top: 10px;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #404040;
+      }
+
+      .edit-btn {
+        margin-top: 14px;
+        background: #101010;
+        border-color: #222;
+        color: #444;
+        font-size: 11px;
+        padding: 7px 14px;
+      }
+
+      #editor-panel {
+        width: 100%;
+        max-width: 300px;
+        background: var(--panel);
+        border: 0.5px solid #2a2a2a;
+        border-radius: 4px;
+        padding: 16px;
+        margin-top: 12px;
+        display: none;
+      }
+
+      #editor-panel.open {
+        display: block;
+      }
+
+      .editor-title {
+        margin: 0 0 12px;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        color: #707070;
+        text-align: center;
+      }
+
+      .editor-list {
+        max-height: 320px;
+        overflow-y: auto;
+        padding-right: 2px;
+      }
+
+      .editor-list::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .editor-list::-webkit-scrollbar-thumb {
+        background: #1f1f1f;
+        border-radius: 999px;
+      }
+
+      .editor-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+
+      .editor-label {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 10px;
+        color: #444;
+        min-width: 60px;
+      }
+
+      .editor-input {
+        flex: 1;
+        background: #111;
+        border: 0.5px solid #2a2a2a;
+        border-radius: 3px;
+        color: #888;
+        font-family: "Barlow Condensed", sans-serif;
+        font-size: 13px;
+        padding: 4px 8px;
+      }
+
+      .editor-input:focus {
+        outline: none;
+        border-color: #c8b89a44;
+        color: var(--accent);
+      }
+
+      .editor-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="safe-root">
+      <canvas id="dial-canvas" width="280" height="280" aria-label="Dial de decisões"></canvas>
+      <div class="pos-display" id="pos-display">DENTE 01 / 100</div>
+      <div class="tooth-big" id="tooth-big">01</div>
+      <div class="controls">
+        <button class="btn" id="btn-minus" type="button">&larr; -1</button>
+        <button class="btn btn-rand" id="btn-rand" type="button">&#10227; RAND</button>
+        <button class="btn" id="btn-plus" type="button">+1 &rarr;</button>
+      </div>
+      <div class="message-box" id="message-box">Aguardando alinhamento inicial.</div>
+      <div class="hint">arraste ou use os botões</div>
+      <button class="btn edit-btn" id="edit-btn" type="button">&#9998; EDITAR TEXTOS</button>
+      <section id="editor-panel" aria-label="Painel de edição de textos">
+        <h2 class="editor-title">TEXTOS POR DENTE</h2>
+        <div class="editor-list" id="editor-list"></div>
+        <div class="editor-actions">
+          <button class="btn" id="save-btn" type="button">SALVAR TEXTOS</button>
+          <button class="btn" id="close-btn" type="button">FECHAR</button>
+        </div>
+      </section>
+    </main>
+    <script>
+      const TOTAL_TEETH = 100;
+      const randomTexts = [
+        "Algo clicou no interior.",
+        "Camara interna em movimento.",
+        "Acesso negado.",
+        "Sequencia incorreta. Recomecar.",
+        "Quase. Continue.",
+        "Este dente parece certo.",
+        "Dente registrado. Aguardando.",
+        "Sistema monitorando.",
+        "Travamento parcial detectado.",
+        "Engrenagem em suspense.",
+        "Leve resistencia no conjunto.",
+        "Nada liberado ainda.",
+        "Sinal mecanico discreto.",
+        "Ajuste minimo aceito.",
+        "Estrutura interna respondeu.",
+        "Rotacao validada.",
+        "Mecanismo em escuta.",
+        "Abertura improvavel por enquanto.",
+        "Contato de precisao detectado.",
+        "Continue com cautela.",
+        "Resposta neutra do sistema.",
+        "Posicao possivel.",
+        "A trava recuou um pouco.",
+        "Sem confirmacao final.",
+        "Ruido seco no nucleo.",
+        "Nenhuma liberacao percebida.",
+        "Um passo adiante.",
+        "Leitura mecanica estavel.",
+        "A camara hesitou.",
+        "Rastro de alinhamento encontrado.",
+        "Ajuste fino recomendado.",
+        "Pressao interna constante.",
+        "Dente promissor.",
+        "Tentativa registrada.",
+        "Nada alem do esperado.",
+        "O conjunto parece atento.",
+        "Sinal fraco de encaixe.",
+        "Ponto de contato alterado.",
+        "Movimento aceito.",
+        "Ainda nao.",
+        "Resposta metalica breve.",
+        "Possivel combinacao secundaria.",
+        "Sem acesso neste ponto.",
+        "A roda interna respirou.",
+        "Ajuste consistente.",
+        "Travamento principal intacto.",
+        "Um clique quase audivel.",
+        "Sequencia em observacao.",
+        "Amostra de alinhamento coletada.",
+        "Nenhuma resposta conclusiva.",
+        "Leitura de torque discreta.",
+        "Prosseguir lentamente.",
+        "Dente sob suspeita.",
+        "Contato limpo.",
+        "Ritmo mecanico mantido.",
+        "O sistema hesitou por um instante.",
+        "Microdesvio percebido.",
+        "A trava secundaria vibrou.",
+        "Nada cedeu.",
+        "Ajuste aceitavel.",
+        "Estria interna respondeu.",
+        "Uma folga apareceu.",
+        "Camada de seguranca ativa.",
+        "Registro parcial confirmado.",
+        "Centro estabilizado.",
+        "Quase alinhado.",
+        "Deslocamento interessante.",
+        "Mecanismo sem decisao.",
+        "Ponto frio detectado.",
+        "Leve eco metalico.",
+        "Sem erro, sem abertura.",
+        "Dente validado pelo giro.",
+        "A sequencia ainda pede mais.",
+        "Resposta baixa, mas real.",
+        "A trava observou seu movimento.",
+        "Nada alem de um clique interno.",
+        "Posicao tecnicamente limpa.",
+        "Tensao preservada.",
+        "Alguma coisa mudou.",
+        "Rotacao sem premio.",
+        "Contato interno deslocado.",
+        "Abertura descartada por enquanto.",
+        "Pista mecanica registrada.",
+        "Ajuste menor reconhecido.",
+        "Sinal seco na estrutura.",
+        "Camara sem liberacao.",
+        "Quase preciso.",
+        "Movimento confiavel.",
+        "A combinacao nao fecha ainda.",
+        "O disco respondeu com firmeza.",
+        "Leitura neutra.",
+        "A trava recuou e voltou.",
+        "Sinal limitado de progresso.",
+        "Dente em observacao tecnica.",
+        "Ajuste interessante.",
+        "Nada finalizado.",
+        "Ruido interno consistente.",
+        "Sequencia possivelmente util.",
+        "Ultima leitura sem abertura.",
+        "O mecanismo manteve silencio."
+      ];
+
+      const canvas = document.getElementById("dial-canvas");
+      const ctx = canvas.getContext("2d");
+      const posDisplay = document.getElementById("pos-display");
+      const toothBig = document.getElementById("tooth-big");
+      const messageBox = document.getElementById("message-box");
+      const btnMinus = document.getElementById("btn-minus");
+      const btnPlus = document.getElementById("btn-plus");
+      const btnRand = document.getElementById("btn-rand");
+      const editBtn = document.getElementById("edit-btn");
+      const editorPanel = document.getElementById("editor-panel");
+      const editorList = document.getElementById("editor-list");
+      const saveBtn = document.getElementById("save-btn");
+      const closeBtn = document.getElementById("close-btn");
+
+      const TAU = Math.PI * 2;
+      const STEP = TAU / TOTAL_TEETH;
+      const R = canvas.width / 2;
+
+      let currentTooth = 0;
+      let displayAngle = 0;
+      let animId = null;
+      let lastDragAngle = null;
+      let isDragging = false;
+      let hasActivatedMessage = false;
+
+      function padTooth(value) {
+        return String(value).padStart(2, "0");
+      }
+
+      function displayNumber(toothIndex) {
+        return padTooth(toothIndex + 1);
+      }
+
+      function toothAngle(t) {
+        return t * STEP;
+      }
+
+      function normalizeDelta(delta) {
+        let adjusted = delta;
+        while (adjusted > Math.PI) adjusted -= TAU;
+        while (adjusted < -Math.PI) adjusted += TAU;
+        return adjusted;
+      }
+
+      function getSnappedAngleForTooth(tooth) {
+        return -toothAngle(tooth);
+      }
+
+      function closestTargetAngle(baseAngle, tooth) {
+        const snapped = getSnappedAngleForTooth(tooth);
+        const revolutions = Math.round((baseAngle - snapped) / TAU);
+        return snapped + revolutions * TAU;
+      }
+
+      function angleToTooth(angle) {
+        const t = Math.round((-angle / TAU) * TOTAL_TEETH);
+        return ((t % TOTAL_TEETH) + TOTAL_TEETH) % TOTAL_TEETH;
+      }
+
+      function drawDial(angle) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "#0a0a0a";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.translate(R, R);
+
+        ctx.beginPath();
+        ctx.arc(0, 0, 136, 0, TAU);
+        ctx.fillStyle = "#080808";
+        ctx.fill();
+
+        ctx.save();
+        ctx.rotate(angle);
+
+        for (let i = 0; i < TOTAL_TEETH; i += 1) {
+          const markerAngle = -Math.PI / 2 + toothAngle(i);
+          const cos = Math.cos(markerAngle);
+          const sin = Math.sin(markerAngle);
+
+          let inner = 128;
+          let outer = 133;
+          let stroke = "#2a2a2a";
+          let width = 0.8;
+
+          if (i % 10 === 0) {
+            inner = 119;
+            stroke = "#888";
+            width = 1.5;
+          } else if (i % 5 === 0) {
+            inner = 124;
+            stroke = "#444";
+          }
+
+          ctx.beginPath();
+          ctx.moveTo(cos * inner, sin * inner);
+          ctx.lineTo(cos * outer, sin * outer);
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = width;
+          ctx.stroke();
+        }
+
+        for (let i = 0; i < TOTAL_TEETH; i += 10) {
+          const markerAngle = -Math.PI / 2 + toothAngle(i);
+          ctx.save();
+          ctx.rotate(markerAngle + Math.PI / 2);
+          ctx.translate(0, -118);
+          ctx.rotate(-markerAngle - Math.PI / 2);
+          ctx.fillStyle = "#666";
+          ctx.font = '9px "Share Tech Mono"';
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(padTooth(i % TOTAL_TEETH), 0, 0);
+          ctx.restore();
+        }
+
+        const ringGradient = ctx.createLinearGradient(-112, -112, 112, 112);
+        ringGradient.addColorStop(0, "#2a2a2a");
+        ringGradient.addColorStop(0.55, "#1c1c1c");
+        ringGradient.addColorStop(1, "#111111");
+
+        ctx.beginPath();
+        ctx.arc(0, 0, 112, 0, TAU);
+        ctx.arc(0, 0, 84, TAU, 0, true);
+        ctx.closePath();
+        ctx.fillStyle = ringGradient;
+        ctx.fill();
+        ctx.lineWidth = 0.5;
+        ctx.strokeStyle = "#3a3a3a";
+        ctx.stroke();
+
+        for (let i = 0; i < 64; i += 1) {
+          const stripeAngle = (TAU / 64) * i;
+          const cos = Math.cos(stripeAngle);
+          const sin = Math.sin(stripeAngle);
+          ctx.beginPath();
+          ctx.moveTo(cos * 84, sin * 84);
+          ctx.lineTo(cos * 112, sin * 112);
+          ctx.strokeStyle = "#282828";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+
+        ctx.restore();
+
+        const plateGradient = ctx.createRadialGradient(-22, -24, 8, 0, 0, 76);
+        plateGradient.addColorStop(0, "#3a3a3a");
+        plateGradient.addColorStop(0.62, "#1e1e1e");
+        plateGradient.addColorStop(1, "#131313");
+
+        ctx.beginPath();
+        ctx.arc(0, 0, 76, 0, TAU);
+        ctx.fillStyle = plateGradient;
+        ctx.fill();
+        ctx.lineWidth = 0.5;
+        ctx.strokeStyle = "#444";
+        ctx.stroke();
+
+        const screwGradient = ctx.createRadialGradient(-4, -4, 1, 0, 0, 12);
+        screwGradient.addColorStop(0, "#555");
+        screwGradient.addColorStop(1, "#1a1a1a");
+
+        ctx.beginPath();
+        ctx.arc(0, 0, 12, 0, TAU);
+        ctx.fillStyle = screwGradient;
+        ctx.fill();
+        ctx.lineWidth = 0.5;
+        ctx.strokeStyle = "#555";
+        ctx.stroke();
+
+        ctx.restore();
+
+        ctx.beginPath();
+        ctx.moveTo(R, R - 137);
+        ctx.lineTo(R - 5, R - 148);
+        ctx.lineTo(R + 5, R - 148);
+        ctx.closePath();
+        ctx.fillStyle = "#c8b89a";
+        ctx.fill();
+      }
+
+      function animateTo(targetAngle, onDone) {
+        if (animId) {
+          cancelAnimationFrame(animId);
+        }
+
+        const startAngle = displayAngle;
+        const duration = 220;
+        const startTime = performance.now();
+
+        function step(now) {
+          const elapsed = now - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          displayAngle = startAngle + (targetAngle - startAngle) * eased;
+          currentTooth = angleToTooth(displayAngle);
+          drawDial(displayAngle);
+          updateUI(currentTooth);
+
+          if (progress < 1) {
+            animId = requestAnimationFrame(step);
+            return;
+          }
+
+          displayAngle = targetAngle;
+          currentTooth = angleToTooth(displayAngle);
+          drawDial(displayAngle);
+          updateUI(currentTooth);
+          animId = null;
+          if (typeof onDone === "function") {
+            onDone();
+          }
+        }
+
+        animId = requestAnimationFrame(step);
+      }
+
+      function rotateTo(t, fast = false) {
+        const nextTooth = ((t % TOTAL_TEETH) + TOTAL_TEETH) % TOTAL_TEETH;
+        const targetAngle = closestTargetAngle(displayAngle, nextTooth);
+        currentTooth = nextTooth;
+        hasActivatedMessage = true;
+
+        if (fast) {
+          if (animId) {
+            cancelAnimationFrame(animId);
+            animId = null;
+          }
+          displayAngle = targetAngle;
+          drawDial(displayAngle);
+          updateUI(currentTooth);
+          return;
+        }
+
+        animateTo(targetAngle);
+      }
+
+      function updateUI(t) {
+        posDisplay.textContent = "DENTE " + displayNumber(t) + " / " + TOTAL_TEETH;
+        toothBig.textContent = displayNumber(t);
+        messageBox.textContent = randomTexts[t] || "";
+        messageBox.classList.toggle("active", hasActivatedMessage);
+      }
+
+      function buildEditor() {
+        const fragment = document.createDocumentFragment();
+
+        for (let i = 0; i < TOTAL_TEETH; i += 1) {
+          const row = document.createElement("div");
+          row.className = "editor-row";
+
+          const label = document.createElement("label");
+          label.className = "editor-label";
+          label.textContent = "DENTE " + displayNumber(i);
+          label.setAttribute("for", "text-input-" + i);
+
+          const input = document.createElement("input");
+          input.className = "editor-input";
+          input.type = "text";
+          input.id = "text-input-" + i;
+          input.value = randomTexts[i];
+          input.autocomplete = "off";
+          input.spellcheck = false;
+
+          row.appendChild(label);
+          row.appendChild(input);
+          fragment.appendChild(row);
+        }
+
+        editorList.appendChild(fragment);
+      }
+
+      function toggleEditor(forceState) {
+        const nextState = typeof forceState === "boolean" ? forceState : !editorPanel.classList.contains("open");
+        editorPanel.classList.toggle("open", nextState);
+      }
+
+      function getAngleFromEvent(e) {
+        const rect = canvas.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const source = e.touches ? e.touches[0] : e;
+        const px = source.clientX - cx;
+        const py = source.clientY - cy;
+        return Math.atan2(py, px);
+      }
+
+      function beginDrag(e) {
+        if (animId) {
+          cancelAnimationFrame(animId);
+          animId = null;
+        }
+        isDragging = true;
+        lastDragAngle = getAngleFromEvent(e);
+        hasActivatedMessage = true;
+      }
+
+      function moveDrag(e) {
+        if (!isDragging) {
+          return;
+        }
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+
+        const nextAngle = getAngleFromEvent(e);
+        const delta = normalizeDelta(nextAngle - lastDragAngle);
+        displayAngle += delta;
+        lastDragAngle = nextAngle;
+        currentTooth = angleToTooth(displayAngle);
+        drawDial(displayAngle);
+        updateUI(currentTooth);
+      }
+
+      function endDrag() {
+        if (!isDragging) {
+          return;
+        }
+        isDragging = false;
+        lastDragAngle = null;
+        rotateTo(currentTooth, false);
+      }
+
+      btnMinus.addEventListener("click", () => {
+        rotateTo(currentTooth - 1, false);
+      });
+
+      btnPlus.addEventListener("click", () => {
+        rotateTo(currentTooth + 1, false);
+      });
+
+      btnRand.addEventListener("click", () => {
+        let target = Math.floor(Math.random() * TOTAL_TEETH);
+        if (target === currentTooth) {
+          target = (target + 1) % TOTAL_TEETH;
+        }
+        rotateTo(target, false);
+      });
+
+      editBtn.addEventListener("click", () => {
+        toggleEditor();
+      });
+
+      closeBtn.addEventListener("click", () => {
+        toggleEditor(false);
+      });
+
+      saveBtn.addEventListener("click", () => {
+        const inputs = editorList.querySelectorAll(".editor-input");
+        inputs.forEach((input, index) => {
+          randomTexts[index] = input.value;
+        });
+        hasActivatedMessage = true;
+        updateUI(currentTooth);
+        toggleEditor(false);
+        const originalLabel = saveBtn.textContent;
+        saveBtn.textContent = "✓ SALVO";
+        window.setTimeout(() => {
+          saveBtn.textContent = originalLabel;
+        }, 1500);
+      });
+
+      canvas.addEventListener("mousedown", beginDrag);
+      canvas.addEventListener("touchstart", beginDrag, { passive: true });
+      window.addEventListener("mousemove", moveDrag);
+      window.addEventListener("touchmove", moveDrag, { passive: false });
+      window.addEventListener("mouseup", endDrag);
+      window.addEventListener("mouseleave", endDrag);
+      window.addEventListener("touchend", endDrag);
+      window.addEventListener("touchcancel", endDrag);
+
+      buildEditor();
+      drawDial(0);
+      updateUI(0);
+    </script>
+  </body>
+</html>
